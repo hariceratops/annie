@@ -15,3 +15,12 @@ Scripts in `mlp/experiments/` run as modules from the repo root, e.g.
 `uv run python -m mlp.experiments.toy_regression 0 1 3`.
 The micrograd notebook needs the Graphviz `dot` binary on PATH.
 There is no test suite and no formatter or linter configuration yet.
+
+## Overrides
+- Comments: code and notebooks may carry comments that explain *what* the
+  code computes, not only *why*. This replaces the default rule that comments
+  explain only non-obvious rationale and never restate what the code does.
+  The repo exists to learn the maths behind neural networks, so tying a line
+  to the equation, derivation step, or array shape it implements is the
+  point. This does not license narrating trivial lines (`# increment
+  counter`).
