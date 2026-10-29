@@ -155,5 +155,5 @@ def test_iris():
     # print("After setting\n", neuralNetwork.weights)
     # print("Time taken = ", t1-t0)
 
-if __name__ == test_iris():
+if __name__ == "__main__":
     test_iris()

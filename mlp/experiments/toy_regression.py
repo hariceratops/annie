@@ -43,6 +43,6 @@ def test_regression():
 
     print("Time taken = ", t1-t0)
 
-if __name__ == test_regression():
+if __name__ == "__main__":
     test_regression()
 
