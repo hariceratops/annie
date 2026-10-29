@@ -5,8 +5,8 @@ import numpy as np
 from sklearn import datasets
 from matplotlib import pyplot as plt
 
-from ..simpleNN.neuralNetwork import Trainer
-from ..simpleNN.neuralNetwork import NeuralNetwork
+from ..network import Trainer
+from ..network import NeuralNetwork
 
 
 def test_iris():

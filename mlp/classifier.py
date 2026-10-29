@@ -1,5 +1,5 @@
-from .neuralNetwork import NeuralNetwork
-from ..helpers import helpers
+from .network import NeuralNetwork
+from . import activations
 import numpy as np
 import time
 
@@ -29,7 +29,7 @@ class MLPClassifier(NeuralNetwork):
         activated_outputs[0] = self.input_data
         for layer in list(range(1, self.number_of_layers)):
             sum_of_weighted_inputs[layer] = np.dot(activated_outputs[layer - 1], weights[layer - 1])
-            activated_outputs[layer] = helpers.soft_plus(sum_of_weighted_inputs[layer])
+            activated_outputs[layer] = activations.soft_plus(sum_of_weighted_inputs[layer])
         self.yHat = activated_outputs[-1]
         # t1 = time.perf_counter()
         # print("Time taken for feed forward = ", t1-t0)

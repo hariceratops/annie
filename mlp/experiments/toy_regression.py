@@ -1,6 +1,6 @@
 import numpy as np
-from ..simpleNN.MLPRegression import MLPRegression
-from ..simpleNN.trainer import Trainer
+from ..regression import MLPRegression
+from ..trainer import Trainer
 import sys
 import time
 

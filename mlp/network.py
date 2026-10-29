@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import optimize
 import time
-from ..helpers.helpers import soft_plus,soft_max
+from .activations import soft_plus, soft_max
 
 
 class NeuralNetwork(object):
