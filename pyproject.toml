@@ -1,0 +1,16 @@
+[project]
+name = "annie"
+version = "0.1.0"
+description = "Learning neural networks from first principles, as a first step toward physical AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "graphviz>=0.21",
+    "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pydot>=4.0.1",
+    "scikit-learn",
+    "scipy",
+    "torch>=2.14.1",
+]
