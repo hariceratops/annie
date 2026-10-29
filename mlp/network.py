@@ -59,8 +59,8 @@ class NeuralNetwork(object):
             self.gradients[count] = np.reshape(self.gradients[count], self.weight_topology[count][1])
             count += 1
 
-        self.weights = np.array(self.weights)
-        self.gradients = np.array(self.gradients)
+        self.weights = np.array(self.weights, dtype=object)
+        self.gradients = np.array(self.gradients, dtype=object)
 
         self.node_output_topology.append((self.number_of_training_data * self.input_layer_size,
                                           (self.number_of_training_data, self.input_layer_size)))
@@ -76,9 +76,9 @@ class NeuralNetwork(object):
             self.activated_outputs.append(np.ones(i[0]))
             self.delta.append(np.ones(i[0]))
 
-        self.sum_of_weighted_inputs = np.array(self.sum_of_weighted_inputs)
-        self.activated_outputs = np.array(self.activated_outputs)
-        self.delta = np.array(self.delta)
+        self.sum_of_weighted_inputs = np.array(self.sum_of_weighted_inputs, dtype=object)
+        self.activated_outputs = np.array(self.activated_outputs, dtype=object)
+        self.delta = np.array(self.delta, dtype=object)
 
         count = 0
         for i in self.sum_of_weighted_inputs:
