@@ -32,6 +32,6 @@ uv run --with jupyterlab jupyter lab
 MLP experiments take `weight_decay depth hidden_layer_size` as arguments:
 
 ```sh
-uv run python -m mlp.experiments.toy_regression 0 1 3
-uv run python -m mlp.experiments.iris 0 1 3
+uv run toy-regression 0 1 3
+uv run iris 0 1 3
 ```

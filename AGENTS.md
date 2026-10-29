@@ -13,11 +13,12 @@ explicitly asked; repo plumbing (tooling, config, docs) is fair game.
 
 Python 3.12, managed with uv (`pyproject.toml`, `uv.lock`); one shared
 environment for all tracks. Run everything through `uv run`.
-Tracks are top-level directories, not an installed package: `micrograd/`
-(Jupyter notebook following Karpathy's micrograd, checked against PyTorch)
-and `mlp/` (NumPy MLP with hand-derived backprop, trained with SciPy BFGS).
-Scripts in `mlp/experiments/` run as modules from the repo root, e.g.
-`uv run python -m mlp.experiments.toy_regression 0 1 3`.
+Tracks are top-level directories: `micrograd/` (Jupyter notebook
+following Karpathy's micrograd, checked against PyTorch) and `mlp/` (NumPy
+MLP with hand-derived backprop, trained with SciPy BFGS). `mlp` is
+installed into the environment (hatchling) so its experiments are exposed
+as `[project.scripts]` entry points, e.g. `uv run toy-regression 0 1 3`.
+Experiment modules must not run anything at import time.
 The micrograd notebook needs the Graphviz `dot` binary on PATH.
 There is no test suite and no formatter or linter configuration yet.
 
