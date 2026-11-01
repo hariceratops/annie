@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 iris = "mlp.experiments.iris:test_iris"
+matvec-layout = "mlp.experiments.matvec_layout:main"
 toy-regression = "mlp.experiments.toy_regression:test_regression"
 
 [build-system]

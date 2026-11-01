@@ -35,3 +35,11 @@ MLP experiments take `weight_decay depth hidden_layer_size` as arguments:
 uv run toy-regression 0 1 3
 uv run iris 0 1 3
 ```
+
+A NumPy layout benchmark (flat parameter buffer viewed as a matrix vs
+slicing rows) takes no arguments; its results and reasoning are recorded in
+its docstring:
+
+```sh
+uv run matvec-layout
+```
