@@ -8,8 +8,12 @@ at the repo root. Host-side Python only; nothing here targets hardware.
 
 The code in the learning tracks is written by hand, by the owner, as the
 learning exercise itself. Agents explain, review, and point out bugs in
-it, but do not write or complete implementation code there unless
-explicitly asked; repo plumbing (tooling, config, docs) is fair game.
+it, but never write or complete code that implements the foundations of
+AI, ML, or robotics: models, layers, backprop, losses, training loops,
+and the maths behind them. Agents may write code only for work outside
+those foundations that helps the owner figure something out, e.g.
+benchmark experiments (NumPy/BLAS behaviour, memory layout),
+documentation, refactoring commits, and repo plumbing (tooling, config).
 
 Python 3.12, managed with uv (`pyproject.toml`, `uv.lock`); one shared
 environment for all tracks. Run everything through `uv run`.
