@@ -94,11 +94,14 @@ class NeuralNetBuffer:
     # what is the return type
     def __getitem__(self, slice: Slice):
         return self.buffer[slice.start: slice.end]
+    
+    def __setitem__(self, slice: Slice, item):
+        self.buffer[slice.start: slice.end] = item
        
 
 class MLP:
     def __init__(self, mlp_topology: MLPTopology) -> None:
-        self.net = np.random.default_rng().random(mlp_topology.net_size)
+        self.net = NeuralNetBuffer(mlp_topology.net_size)
         self.weight_shapes = list(pairwise(mlp_topology.layers))
         # a function chainer with chaining element as lambda?
         # rename input to layer since output is part of it too
@@ -111,30 +114,21 @@ class MLP:
         # create slices
 
     def feed_forward(self, nn_input):
-        i_start_prev, i_end_prev = self.inputs[0]
-        self.net[i_start_prev:i_end_prev] = nn_input
+        self.net[self.inputs[0]] = nn_input
 
         for i in range(1, len(self.inputs)):
-            i_start, i_end = self.inputs[i]
-            b_start, b_end = self.biases[i - 1]
-            w_start, w_end = self.weights[i - 1]
             m, n = self.weight_shapes[i - 1]
+            x = self.net[self.inputs[i - 1]]
+            b = self.net[self.biases[i - 1]]
+            W = self.net[self.weights[i - 1]].reshape(m, n)
 
-            x = self.net[i_start_prev:i_end_prev]
-            b = self.net[b_start:b_end]
-            W = self.net[w_start:w_end].reshape(m, n)
+            self.net[self.inputs[i]] = (x @ W) + b
 
-            self.net[i_start:i_end] = activation((x @ W) + b)
-
-            i_start_prev, i_end_prev = i_start, i_end
-
-        i_out_start, i_out_end = self.inputs[-1]
-        # better abstraction  net with [] operator
-        res = self.net[i_out_start:i_out_end]
+        res = self.net[self.inputs[-1]]
         return res
 
     def backpropagate(self, y_ground_truth, y_hat):
-        e = sum(2 * sum((y_ground_truth - y_hat) ** 2))
+        # e = sum(2 * sum((y_ground_truth - y_hat) ** 2))
 
         for i in list(reversed(range(len(self.inputs)))):
             i_start, i_end = self.inputs[i]
