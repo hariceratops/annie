@@ -2,6 +2,9 @@ from typing import Iterable, Iterator, Callable
 import numpy as np
 from dataclasses import dataclass, field, fields
 from itertools import pairwise, starmap
+from numpy.typing import NDArray
+from scipy import optimize
+from mlp.v2.activations import RELU, Activated, PreActivation
 
 
 @dataclass(frozen=True)
@@ -15,7 +18,10 @@ class Slice:
     def __iter__(self):
         return (getattr(self, f.name) for f in fields(self))
 
+    # merge interval and sub slice for ex bias + weight
 
+
+# a better name?
 def slice(iterable: Iterable, offset: int = 0) -> Iterator[Slice]:
     iterator = iter(iterable)
     for b in iterator:
@@ -24,13 +30,13 @@ def slice(iterable: Iterable, offset: int = 0) -> Iterator[Slice]:
         offset = end
 
 
+# a better name?
 def slice_w(iterable: Iterable, offset: int = 0) -> Iterator[Slice]:
     iterator = pairwise(iterable)
     for b in iterator:
         end = offset + (b[0] * b[1])
         yield Slice(offset, end)
         offset = end
-
 
 
 @dataclass(frozen=True)
@@ -43,10 +49,12 @@ class MLPTopology:
 
     def __post_init__(self):
         layers = [self.size_in, *self.size_hidden, self.size_out]
-        inputs_count = self.size_in + sum(self.size_hidden) + self.size_out
+        neuron_count = self.size_in + sum(self.size_hidden) + self.size_out
         weights_count = sum(starmap(lambda x, y: x * y, pairwise(layers)))
         biases_count = sum(self.size_hidden) + self.size_out
-        net_size = inputs_count + (2 * (weights_count + biases_count))
+        # z_counts = a_counts = del_counts = neuron_count
+        # Twice weights and biases to account gradients
+        net_size = (3 * neuron_count) + (2 * (weights_count + biases_count))
 
         object.__setattr__(self, "layers", layers)
         object.__setattr__(self, "net_size", net_size)
@@ -103,38 +111,78 @@ class MLP:
     def __init__(self, mlp_topology: MLPTopology) -> None:
         self.net = NeuralNetBuffer(mlp_topology.net_size)
         self.weight_shapes = list(pairwise(mlp_topology.layers))
-        # a function chainer with chaining element as lambda?
-        # rename input to layer since output is part of it too
-        self.inputs = L.make_inputs(mlp_topology, 0)
-        self.biases = L.make_biases(mlp_topology, self.inputs.slice.end)
+        # todo a function chainer with chaining element as lambda?
+        # todo rename input to layer since output is part of it too
+        self.z = L.make_inputs(mlp_topology, 0)
+        self.a = L.make_inputs(mlp_topology, self.z.slice.end)
+        self.biases = L.make_biases(mlp_topology, self.a.slice.end)
         self.weights = L.make_weights(mlp_topology, self.biases.slice.end)
-        self.bias_gradients = L.make_biases(mlp_topology, self.weights.slice.end)
+        # todo inputs? check dimension
+        self.delta = L.make_inputs(mlp_topology, self.weights.slice.end)
+        self.bias_gradients = L.make_biases(mlp_topology, self.delta.slice.end)
         self.weight_gradients = L.make_weights(mlp_topology, self.bias_gradients.slice.end)
-        
-        # create slices
+        self.param_slice = Slice(self.biases.slice.start, self.weights.slice.end)
+        self.gradient_slice = Slice(self.bias_gradients.slice.start, self.bias_gradients.slice.end)
 
-    def feed_forward(self, nn_input):
-        self.net[self.inputs[0]] = nn_input
+    # todo abstract training data into separate type
+    # todo resolve type hint error
+    def x(self, nn_parameters, nn_input, y_ground_truth) -> tuple[float, NDArray]:
+        self.net[self.param_slice] = nn_parameters
+        error = 0
 
-        for i in range(1, len(self.inputs)):
-            m, n = self.weight_shapes[i - 1]
-            x = self.net[self.inputs[i - 1]]
-            b = self.net[self.biases[i - 1]]
-            W = self.net[self.weights[i - 1]].reshape(m, n)
+        for sample, ground_truth in zip(nn_input, y_ground_truth):
+            self.net[self.z[0]] = sample
 
-            self.net[self.inputs[i]] = (x @ W) + b
+            for i in range(1, len(self.z)):
+                m, n = self.weight_shapes[i - 1]
+                x = self.net[self.a[i - 1]]
+                b = self.net[self.biases[i - 1]]
+                W = self.net[self.weights[i - 1]].reshape(m, n)
 
-        res = self.net[self.inputs[-1]]
-        return res
+                self.net[self.z[i]] = (x @ W) + b
+                self.net[self.a[i]] = RELU.forward(PreActivation(self.net[self.z[i]]))
 
-    def backpropagate(self, y_ground_truth, y_hat):
-        # e = sum(2 * sum((y_ground_truth - y_hat) ** 2))
+            y_hat = self.net[self.a[-1]]
+            self.net[self.delta[-1]] = 2*(ground_truth - y_hat) 
+            error += 2 * np.sum((ground_truth - y_hat) ** 2)
 
-        for i in list(reversed(range(len(self.inputs)))):
-            i_start, i_end = self.inputs[i]
-        pass
+            for i in list(reversed(range(len(self.z)))):
+                self.net[self.weights[i]] = \
+                    np.outer(self.net[self.a[i]], self.net[self.delta[i + 1]])
+                self.net[self.bias_gradients[i]] = self.net[self.delta[i + 1]]
+                if i > 1:
+                    self.net[self.delta[i]] = RELU.backward(
+                        PreActivation(self.net[self.z[i]]),
+                        Activated(self.net[self.a[i]]),
+                        self.net[self.weights[i]] @ self.net[self.delta[i + 1]])
+
+        return (error, self.net[self.gradient_slice])
+
+
+# class MLPTrainer:
+#     def __init__(self, gradient_descent_scheme, max_iter) -> None:
+#         self.gradient_descent_scheme = gradient_descent_scheme;
+#         self.max_iter = max_iter
+#
+#     def fun(self) -> None:
+#         pass
+#
+#     def callback(self) -> None:
 
 
 m = MLP(MLPTopology(4, (6,), 2))
-m.feed_forward(np.random.default_rng().random(4))
+# todo use correct io with possibly the abstracted mlpdata class
+x = np.random.default_rng().random(4)
+y = np.random.default_rng().random(4)
+nn_parameters = m.net[m.param_slice]
+options = {'maxiter': 2000, 'disp': True}
+res = optimize.minimize(
+        lambda: m.x, 
+        nn_parameters, 
+        jac=True, 
+        method='BFGS',
+        args=(x, y), 
+        options=options, 
+        callback=None # use for debugging is needed
+      )
 
