@@ -122,16 +122,17 @@ class MLP:
         self.bias_gradients = L.make_biases(mlp_topology, self.delta.slice.end)
         self.weight_gradients = L.make_weights(mlp_topology, self.bias_gradients.slice.end)
         self.param_slice = Slice(self.biases.slice.start, self.weights.slice.end)
-        self.gradient_slice = Slice(self.bias_gradients.slice.start, self.bias_gradients.slice.end)
+        self.gradient_slice = Slice(self.bias_gradients.slice.start, self.weight_gradients.slice.end)
 
     # todo abstract training data into separate type
     # todo resolve type hint error
-    def x(self, nn_parameters, nn_input, y_ground_truth) -> tuple[float, NDArray]:
+    def x(self, nn_parameters, nn_input, nn_ground_truth) -> tuple[float, NDArray]:
         self.net[self.param_slice] = nn_parameters
         error = 0
+        loss = 0
 
-        for sample, ground_truth in zip(nn_input, y_ground_truth):
-            self.net[self.z[0]] = sample
+        for sample, ground_truth in zip(nn_input, nn_ground_truth):
+            self.net[self.a[0]] = sample
 
             for i in range(1, len(self.z)):
                 m, n = self.weight_shapes[i - 1]
@@ -143,20 +144,22 @@ class MLP:
                 self.net[self.a[i]] = RELU.forward(PreActivation(self.net[self.z[i]]))
 
             y_hat = self.net[self.a[-1]]
-            self.net[self.delta[-1]] = 2*(ground_truth - y_hat) 
-            error += 2 * np.sum((ground_truth - y_hat) ** 2)
+            error = y_hat - ground_truth
+            self.net[self.delta[-1]] = 2 * error
+            loss += 2 * np.sum(error ** 2)
 
-            for i in list(reversed(range(len(self.z)))):
-                self.net[self.weights[i]] = \
-                    np.outer(self.net[self.a[i]], self.net[self.delta[i + 1]])
+            for i in list(reversed(range(len(self.weights)))):
+                m, n = self.weight_shapes[i]
+                self.net[self.weight_gradients[i]] = np.outer(self.net[self.a[i]], self.net[self.delta[i + 1]])
                 self.net[self.bias_gradients[i]] = self.net[self.delta[i + 1]]
                 if i > 1:
                     self.net[self.delta[i]] = RELU.backward(
-                        PreActivation(self.net[self.z[i]]),
-                        Activated(self.net[self.a[i]]),
-                        self.net[self.weights[i]] @ self.net[self.delta[i + 1]])
+                        PreActivation(self.net[self.z[i]]), Activated(self.net[self.a[i]]),
+                        self.net[self.weights[i]].reshape(m, n) @ self.net[self.delta[i + 1]]
+                    )
 
-        return (error, self.net[self.gradient_slice])
+        gradients = self.net[self.gradient_slice]
+        return (error, gradients)
 
 
 # class MLPTrainer:
@@ -170,19 +173,25 @@ class MLP:
 #     def callback(self) -> None:
 
 
-m = MLP(MLPTopology(4, (6,), 2))
-# todo use correct io with possibly the abstracted mlpdata class
-x = np.random.default_rng().random(4)
-y = np.random.default_rng().random(4)
-nn_parameters = m.net[m.param_slice]
-options = {'maxiter': 2000, 'disp': True}
-res = optimize.minimize(
-        lambda: m.x, 
-        nn_parameters, 
-        jac=True, 
-        method='BFGS',
-        args=(x, y), 
-        options=options, 
-        callback=None # use for debugging is needed
-      )
+if __name__ == "__main__":
+    m = MLP(MLPTopology(4, (6,), 2))
+
+    # todo use correct io with possibly the abstracted mlpdata class
+    nn_inputs = np.random.default_rng().random(4)
+    nn_ground_truth = np.random.default_rng().random(4)
+
+    nn_parameters = m.net[m.param_slice]
+    options = {'maxiter': 2000, 'disp': True}
+    def wrapper_x(nn_parameters, nn_input, nn_ground_truth) -> tuple[float, NDArray]:
+        return m.x(nn_parameters, nn_input, nn_ground_truth)
+
+    res = optimize.minimize(
+            wrapper_x, 
+            nn_parameters, 
+            jac=True, 
+            method='BFGS',
+            args=(nn_inputs, nn_ground_truth), 
+            options=options, 
+            callback=None # use for debugging is needed
+          )
 
